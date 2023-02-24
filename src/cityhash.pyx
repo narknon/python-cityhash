@@ -10,10 +10,11 @@ Python wrapper for CityHash
 
 __author__      = "Eugene Scherba"
 __email__       = "escherba+cityhash@gmail.com"
-__version__     = '0.4.6'
+__version__     = '0.4.7'
 __all__         = [
     "CityHash32",
     "CityHash64",
+    "CityHash64WithSize",
     "CityHash64WithSeed",
     "CityHash64WithSeeds",
     "CityHash128",
@@ -134,6 +135,32 @@ def CityHash64(data) -> int:
     elif PyObject_CheckBuffer(data):
         PyObject_GetBuffer(data, &buf, PyBUF_SIMPLE)
         result = c_Hash64(<const char*>buf.buf, buf.len)
+        PyBuffer_Release(&buf)
+    else:
+        raise _type_error("data", ["basestring", "buffer"], data)
+    return result
+    
+def CityHash64WithSize(data, size) -> int:
+    """Obtain a 64-bit hash from input data.
+
+    :param data: input data (string, bytes, or buffer object)
+    :param size: size of buffer to hash (size_t)
+    :return: an integer representing a 64-bit hash of the input
+    :raises TypeError: if data is not of one of input types
+    :raises ValueError: if input buffer is not C-contiguous
+    """
+    cdef Py_buffer buf
+    cdef uint64 result
+    if PyUnicode_Check(data):
+        encoding = PyUnicode_AsUTF8AndSize(data, &inSize)
+        result = c_Hash64(encoding, size)
+    elif PyBytes_Check(data):
+        result = c_Hash64(
+            <const char*>PyBytes_AS_STRING(data),
+            size)
+   elif PyObject_CheckBuffer(data):
+        PyObject_GetBuffer(data, &buf, PyBUF_SIMPLE)
+        result = c_Hash64(<const char*>buf.buf, size)
         PyBuffer_Release(&buf)
     else:
         raise _type_error("data", ["basestring", "buffer"], data)
